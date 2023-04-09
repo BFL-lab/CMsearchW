@@ -292,11 +292,11 @@ sub CreateAPC {
         my ($startline,$endline) = ("","");
 
         if (!$isMinus) {
-            $startline = ";;    $NAME $dir ;; note: $comment, evalue: $evalue";
+            $startline = ";;    $NAME $dir ;; $comment, evalue: $evalue";
             $endline   = ";;";
         } else {
             $startline = ";;";
-            $endline   = ";;    $NAME $dir ;; note: $comment, evalue: $evalue";
+            $endline   = ";;    $NAME $dir ;; $comment, evalue: $evalue";
         }
 
         my $AP = new PirObject::AnnotPair(

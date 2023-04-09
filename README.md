@@ -11,7 +11,8 @@ In order to run CMsearch you need:
 1. Install [Infernal](http://eddylab.org/infernal/) on your system.
 2. Install the [PirObject](https://github.com/prioux/PirObject) library.
 3. Install all the necessary [PirModels](https://github.com/BFL-lab/PirModels).
-4. Copy `CMsearchWrapper` in one of your executable directory (e.g: a directory list in $PATH).
+4. Install all [MFannot_data model](https://github.com/BFL-lab/MFannot_data)
+5. Copy `CMsearchWrapper` in one of your executable directory (e.g: a directory list in $PATH).
 
 **Note**: At this point the installation of CMsearchWrapper was only tested on Unix system (Ubuntu and CentOS).
 
