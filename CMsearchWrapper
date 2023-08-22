@@ -41,8 +41,6 @@ use File::Basename;
 use File::Path;
 use PirObject;
 
-use Data::Dumper;
-
 PirObject->LoadDataModel("CMsearchOutput");
 PirObject->LoadDataModel("AnnotPairCollection");
 
@@ -289,23 +287,17 @@ sub CreateAPC {
         my $isMinus    = $CMsearchItem->get_Strand() eq "-";
         my $dir        = !$isMinus ? "==>" : "<==";
         my $evalue     = $CMsearchItem->get_Evalue();
-        my ($startline,$endline) = ("","");
 
-        if (!$isMinus) {
-            $startline = ";;    $NAME $dir start ;; $comment, evalue: $evalue";
-            $endline   = ";;";
-        } else {
-            $startline = ";;";
-            $endline   = ";;    $NAME $dir start ;; $comment, evalue: $evalue";
-        }
+        my $startline = ";     G-$NAME $dir start;; mfannot: $comment, CM evalue: $evalue";
+        my $endline   = ";     G-$NAME $dir end";
 
         my $AP = new PirObject::AnnotPair(
-            type => "C",
+            type      => "G",
             genename  => $NAME,
             score     => $CMsearchItem->get_Evalue(),
             startpos  => $CMsearchItem->get_SequenceFrom(),
             endpos    => $CMsearchItem->get_SequenceTo(),
-            direction => $CMsearchItem->get_Strand(),
+            direction => $CMsearchItem->get_Strand() eq "+" ? "==>" : "<==",
             startline => $startline,
             endline   => $endline,
             idbyHMM   => 1,
