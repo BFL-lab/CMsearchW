@@ -178,6 +178,11 @@ my ($APC)         = &CreateAPC($RES_FILE,$ID2SEQ);
 print "Temporary work directory $TMPDIR cleaned up ...\n" if $DEBUG;
 print "APC file: $APC_OUT\n";
 system("cp $APC $APC_OUT");
+if ($TBL_OUT) {
+    print "TBL file: $TBL_OUT";
+    system("cp $RES_FILE $TBL_OUT");
+    print "\n";
+}
 
 END {
     # With exit, programme will go here
