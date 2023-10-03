@@ -118,6 +118,7 @@ where:
   -n <string> : Gene name
   -c <string> : Comment for mfannot
   -m <file>   : CM model file
+  -a <file>   : ALI output file of cmsearch
   -t <file>   : TBL output file of cmsearch
   -o <file>   : AnnotPairCollection output file (XML format)
 
@@ -172,15 +173,22 @@ sub GetPath {
 # Main program                             #
 ############################################
 
-my ($SEQ,$ID2SEQ) = &CleanFastaAndChangeHeader($GENOME);
-my ($RES_FILE)    = &RunCMsearch($SEQ,$CM_MODEL);
+my ($SEQ,$ID2SEQ)       = &CleanFastaAndChangeHeader($GENOME);
+my ($RES_FILE,$RES_ALI_FILE) = &RunCMsearch($SEQ,$CM_MODEL);
 my ($APC)         = &CreateAPC($RES_FILE,$ID2SEQ);
 print "Temporary work directory $TMPDIR cleaned up ...\n" if $DEBUG;
 print "APC file: $APC_OUT\n";
 system("cp $APC $APC_OUT");
+
 if ($TBL_OUT) {
     print "TBL file: $TBL_OUT";
     system("cp $RES_FILE $TBL_OUT");
+    print "\n";
+}
+
+if ($ALI_OUT) {
+    print "ALI file: $ALI_OUT";
+    system("cp $RES_ALI_FILE $ALI_OUT");
     print "\n";
 }
 
@@ -260,12 +268,13 @@ sub RunCMsearch {
 
     # Run on + strand
     my $tbl_output = "$TMPDIR/CMres.tbl";
-    my $cmd    = "nice -19 $CMsearch_path --tblout $tbl_output $cm_model $seq >/dev/null 2>/dev/null";
+    my $ali_output = "$TMPDIR/CMres.ali";
+    my $cmd    = "nice -19 $CMsearch_path -A $ali_output --tblout $tbl_output $cm_model $seq >/dev/null 2>/dev/null";
     print "$cmd\n" if $DEBUG;
     my $resultat  = system($cmd);
     &PrintErrorSystem($resultat, "Error when proccessing CMsearch\n");
 
-    return ($tbl_output);
+    return ($tbl_output,$ali_output);
 }
 
 #####################################
