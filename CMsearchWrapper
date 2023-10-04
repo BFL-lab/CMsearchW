@@ -74,6 +74,7 @@ my $NAME="";     # Gene name
 my $TBL_OUT="";  # TBL output file of cmsearch
 my $ALI_OUT="";  # ALI output file of cmsearch
 my $APC_OUT="";  # AnnotPairCollection output file
+my $LOG_OUT="";  # Log output file
 my $COMMENT="";  # Comment for mfannot
 my $CMsearch_path= &GetPath("cmsearch"); # Path to cmsearch
 
@@ -82,10 +83,10 @@ my $CMsearch_path= &GetPath("cmsearch"); # Path to cmsearch
 #####################################
 
 for (;@ARGV;) {
-    my ($opt,$arg) = ($ARGV[0] =~ /^-([dgnmtaoc])(.*)$/o);
+    my ($opt,$arg) = ($ARGV[0] =~ /^-([dgnmtaolc])(.*)$/o);
     last if ! defined $opt;
     # See for option... with argument
-    if ($opt =~ /[gnmtaoc]/ && $arg eq "") {
+    if ($opt =~ /[gnmtaolc]/ && $arg eq "") {
         if (@ARGV < 2) {
             print STDERR "Argument required for switch \"-$opt\".\n";
             exit 1;
@@ -102,6 +103,7 @@ for (;@ARGV;) {
     $TBL_OUT   = $arg                      if $opt eq 't';
     $ALI_OUT   = $arg                      if $opt eq 'a';
     $APC_OUT   = $arg                      if $opt eq 'o';
+    $LOG_OUT   = $arg                      if $opt eq 'l';
     $COMMENT   = $arg                      if $opt eq 'c';
 
     shift @ARGV;
@@ -118,7 +120,9 @@ where:
   -n <string> : Gene name
   -c <string> : Comment for mfannot
   -m <file>   : CM model file
+  -a <file>   : ALI output file of cmsearch
   -t <file>   : TBL output file of cmsearch
+  -l <file>   : Log file a human readable log file
   -o <file>   : AnnotPairCollection output file (XML format)
 
 USAGE
@@ -172,16 +176,27 @@ sub GetPath {
 # Main program                             #
 ############################################
 
-my ($SEQ,$ID2SEQ) = &CleanFastaAndChangeHeader($GENOME);
-my ($RES_FILE)    = &RunCMsearch($SEQ,$CM_MODEL);
+my ($SEQ,$ID2SEQ)       = &CleanFastaAndChangeHeader($GENOME);
+my ($RES_FILE,$RES_ALI_FILE) = &RunCMsearch($SEQ,$CM_MODEL);
 my ($APC)         = &CreateAPC($RES_FILE,$ID2SEQ);
 print "Temporary work directory $TMPDIR cleaned up ...\n" if $DEBUG;
-print "APC file: $APC_OUT\n";
+print "APC (.xml) file: $APC_OUT\n";
 system("cp $APC $APC_OUT");
+
 if ($TBL_OUT) {
     print "TBL file: $TBL_OUT";
     system("cp $RES_FILE $TBL_OUT");
     print "\n";
+}
+
+if ($ALI_OUT) {
+    print "ALI file: $ALI_OUT";
+    system("cp $RES_ALI_FILE $ALI_OUT");
+    print "\n";
+}
+
+if ($LOG_OUT) {
+    &CreateLogFile($LOG_OUT,$RES_FILE,$RES_ALI_FILE);
 }
 
 END {
@@ -260,12 +275,13 @@ sub RunCMsearch {
 
     # Run on + strand
     my $tbl_output = "$TMPDIR/CMres.tbl";
-    my $cmd    = "nice -19 $CMsearch_path --tblout $tbl_output $cm_model $seq >/dev/null 2>/dev/null";
+    my $ali_output = "$TMPDIR/CMres.ali";
+    my $cmd    = "nice -19 $CMsearch_path -A $ali_output --tblout $tbl_output $cm_model $seq >/dev/null 2>/dev/null";
     print "$cmd\n" if $DEBUG;
     my $resultat  = system($cmd);
     &PrintErrorSystem($resultat, "Error when proccessing CMsearch\n");
 
-    return ($tbl_output);
+    return ($tbl_output,$ali_output);
 }
 
 #####################################
@@ -323,6 +339,77 @@ sub CreateAPC {
     $fh_outfile->close();
     print "APC created in $outfile\n";
     return ($outfile);
+}
+
+sub CreateLogFile {
+    my ($outfile,$tbl_file,$ali_file) = @_;
+
+    my $CMsearchItems = &ReadCMsearch($RES_FILE);
+    my $nb_sol = scalar(@$CMsearchItems);
+
+    my $comment = $COMMENT || "";
+    # Remove the 'note=' in comment if present
+    $comment =~ s/note=//g;
+    my $identified = "$NAME";
+    $identified .= " ($comment)" if $comment;
+
+    my $short_summary = "";
+
+    $short_summary .= "\nIdentified RNA structure with CM model for $identified\n";
+    $short_summary .= sprintf("\n%-30s %15s \n%-30s %15s", "","Retained #","","of solution");
+    $short_summary .= sprintf("\n%-30.30s %15s",$identified,$nb_sol);
+
+    $short_summary  .= "\n\n******************************************************************************\n";
+    $short_summary  .= "List of identified $identified prediction :\n\n";
+
+    $short_summary .=  "                                                RNA    RNA\n";
+    $short_summary .=  "Species name                    RNA # Strand  Begin    End             E-value\n";
+    $short_summary .=  "------------------------------ ------ ------ ------ ------ ---- ----- --------\n";
+
+    # Iteshort_summaryover all CMsearchItems
+    my $nb = 1;
+    foreach my $CMsearchItem (@$CMsearchItems) {
+        # Add one line to the short summary for each CMsearchItem
+        my $contigname = $CMsearchItem->get_TargetName();
+        my $strand     = $CMsearchItem->get_Strand() eq "+" ? "FW" : "RC";
+        my $start      = $CMsearchItem->get_SequenceFrom();
+        my $end        = $CMsearchItem->get_SequenceTo();
+        my $evalue     = $CMsearchItem->get_Evalue();
+
+        $short_summary .= sprintf("%-30.30s %6s %6s %6s %6s %4s %5s %8s\n",
+                                  $ID2SEQ->{$contigname}->{"OriName"},
+                                  $nb,
+                                  $strand,
+                                  $start,
+                                  $end,
+                                  "",
+                                  "",
+                                  $evalue);
+
+        $nb = $nb + 1;
+    }
+
+    $short_summary .= "\n\n*************************************************\n";
+    $short_summary .= "Condensed alignment for $NAME\n";
+    $short_summary .= "*************************************************\n";
+    $short_summary .= "$nb_sol match(es)\n";
+    $short_summary .= "\n";
+
+    # Cat the content of the alignment file
+    my $io_infile  = new IO::File "<$ali_file"
+        or die "Can't read from file '$ali_file': $!\n";
+    my @tab = <$io_infile>;
+    $io_infile->close();
+    $short_summary .= join("",@tab);
+
+    # Save the short summary in the log file
+    my $fh_outfile = new IO::File ">$outfile"
+        or die "Can't write in file '$outfile': $!\n";
+
+    print $fh_outfile $short_summary;
+    $fh_outfile->close();
+
+    print "Log file created in $outfile\n";
 }
 
 sub ReadCMsearch {
