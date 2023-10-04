@@ -168,6 +168,8 @@ sub GetPath {
 # Check output files
 &Usage("Error: File '$TBL_OUT' give for option -t is not writable by you\n") if (-f ($TBL_OUT) && (!(-w ($TBL_OUT))));
 &Usage("Error: File '$APC_OUT' give for option -o is not writable by you\n") if (-f ($APC_OUT) && (!(-w ($APC_OUT))));
+&Usage("Error: File '$ALI_OUT' give for option -a is not writable by you\n") if (-f ($ALI_OUT) && (!(-w ($ALI_OUT))));
+&Usage("Error: File '$LOG_OUT' give for option -l is not writable by you\n") if (-f ($LOG_OUT) && (!(-w ($LOG_OUT))));
 
 # Check other options
 &Usage("Error: Missing gene name (-n option)") if $NAME eq "";
@@ -180,8 +182,10 @@ my ($SEQ,$ID2SEQ)       = &CleanFastaAndChangeHeader($GENOME);
 my ($RES_FILE,$RES_ALI_FILE) = &RunCMsearch($SEQ,$CM_MODEL);
 my ($APC)         = &CreateAPC($RES_FILE,$ID2SEQ);
 print "Temporary work directory $TMPDIR cleaned up ...\n" if $DEBUG;
-print "APC (.xml) file: $APC_OUT\n";
-system("cp $APC $APC_OUT");
+if ($APC_OUT) {
+  print "APC (.xml) file: $APC_OUT\n";
+  system("cp $APC $APC_OUT");
+}
 
 if ($TBL_OUT) {
     print "TBL file: $TBL_OUT";
