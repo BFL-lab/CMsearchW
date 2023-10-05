@@ -68,14 +68,15 @@ if (! -d $TMPDIR) {
 }
 
 # Basic command-line options
-my $GENOME="";   # Genome file
-my $CM_MODEL=""; # CM model file
-my $NAME="";     # Gene name
-my $TBL_OUT="";  # TBL output file of cmsearch
-my $ALI_OUT="";  # ALI output file of cmsearch
-my $APC_OUT="";  # AnnotPairCollection output file
-my $LOG_OUT="";  # Log output file
-my $COMMENT="";  # Comment for mfannot
+my $GENOME="";     # Genome file
+my $CM_MODEL="";   # CM model file
+my $NAME="";       # Gene name
+my $TBL_OUT="";    # TBL output file of cmsearch
+my $ALI_OUT="";    # ALI output file of cmsearch
+my $APC_OUT="";    # AnnotPairCollection output file
+my $LOG_OUT="";    # Log output file
+my $COMMENT="";    # Comment for mfannot
+my $EVALUE=0.0001; # E-value threshold for CMsearch
 my $CMsearch_path= &GetPath("cmsearch"); # Path to cmsearch
 
 #####################################
@@ -83,10 +84,10 @@ my $CMsearch_path= &GetPath("cmsearch"); # Path to cmsearch
 #####################################
 
 for (;@ARGV;) {
-    my ($opt,$arg) = ($ARGV[0] =~ /^-([dgnmtaolc])(.*)$/o);
+    my ($opt,$arg) = ($ARGV[0] =~ /^-([dgnmtaolce])(.*)$/o);
     last if ! defined $opt;
-    # See for option... with argument
-    if ($opt =~ /[gnmtaolc]/ && $arg eq "") {
+    # See for option... with argumentcm
+    if ($opt =~ /[gnmtaolce]/ && $arg eq "") {
         if (@ARGV < 2) {
             print STDERR "Argument required for switch \"-$opt\".\n";
             exit 1;
@@ -104,6 +105,7 @@ for (;@ARGV;) {
     $ALI_OUT   = $arg                      if $opt eq 'a';
     $APC_OUT   = $arg                      if $opt eq 'o';
     $LOG_OUT   = $arg                      if $opt eq 'l';
+    $EVALUE    = $arg                      if $opt eq 'e';
     $COMMENT   = $arg                      if $opt eq 'c';
 
     shift @ARGV;
@@ -124,6 +126,7 @@ where:
   -t <file>   : TBL output file of cmsearch
   -l <file>   : Log file a human readable log file
   -o <file>   : AnnotPairCollection output file (XML format)
+  -e <float>  : E-value threshold for CMsearch (default 0.0001)
 
 USAGE
     print STDERR $message,"\n" if $message;
@@ -280,7 +283,7 @@ sub RunCMsearch {
     # Run on + strand
     my $tbl_output = "$TMPDIR/CMres.tbl";
     my $ali_output = "$TMPDIR/CMres.ali";
-    my $cmd    = "nice -19 $CMsearch_path -A $ali_output --tblout $tbl_output $cm_model $seq >/dev/null 2>/dev/null";
+    my $cmd    = "nice -19 $CMsearch_path -E $EVALUE -A $ali_output --tblout $tbl_output $cm_model $seq >/dev/null 2>/dev/null";
     print "$cmd\n" if $DEBUG;
     my $resultat  = system($cmd);
     &PrintErrorSystem($resultat, "Error when proccessing CMsearch\n");
